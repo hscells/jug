@@ -1,19 +1,22 @@
-package jug
+package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/alexflint/go-arg"
+	"github.com/hscells/jug"
+	"os"
+)
 
 var (
-	name    = "reverb"
-	version = "03.Jan.2020"
+	name    = "jug"
+	version = "06.Feb.2020"
 	author  = "Harry Scells"
 )
 
 type args struct {
-	Pipeline     string   `help:"Path to boogie experimental pipeline file"`
-	Port         string   `help:"Port to run server on" arg:"-p"`
-	Hosts        []string `help:"When in client mode, list of reverb servers to distribute the pipeline across" arg:"-s,separate"`
-	Mode         string   `help:"Mode to run reverb in [client/server]" arg:"required,positional"`
-	TemplateArgs []string `help:"Additional arguments to pass to experimental pipeline file" arg:"positional"`
+	File  string `help:"JSON file" arg:"required,positional"`
+	Query string `help:"Query" arg:"required,positional"`
 }
 
 func (args) Version() string {
@@ -32,7 +35,36 @@ func (args) Description() string {
 }
 
 func main() {
+	var args args
+	arg.MustParse(&args)
 
-		
+	f, err := os.OpenFile(args.File, os.O_RDONLY, 0664)
+	if err != nil {
+		panic(err)
+	}
 
+	var frame jug.DataFrame
+	err = json.NewDecoder(f).Decode(&frame)
+	if err != nil {
+		panic(err)
+	}
+
+	plan, err := jug.Parse(args.Query)
+	if err != nil {
+		panic(err)
+	}
+
+	result, err := plan.Execute(frame)
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := json.MarshalIndent(result.Frame, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	_, err = os.Stdout.Write(b)
+	if err != nil {
+		panic(err)
+	}
 }
